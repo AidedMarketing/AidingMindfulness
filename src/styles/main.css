@@ -160,3 +160,30 @@
   transform: translateY(100%);
   transition: transform 300ms ease-in;
 }
+
+/* Slide up/down animations for update notifier */
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-down {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 300ms ease-out forwards;
+}
+
+.animate-slide-down {
+  animation: slide-down 300ms ease-in forwards;
+}
