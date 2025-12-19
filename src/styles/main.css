@@ -1,0 +1,162 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Primary Colors */
+  --color-primary: #4ECDC4;
+  --color-primary-dark: #3BA39C;
+
+  /* Emotion Colors */
+  --color-anxious: #FF6B6B;
+  --color-stressed: #FFA500;
+  --color-sad: #6B8EFF;
+  --color-restless: #FFD700;
+  --color-tired: #9B9B9B;
+  --color-calm: #4ECDC4;
+
+  /* Neutrals */
+  --color-bg-light: #FFFFFF;
+  --color-bg-dark: #1A1A1A;
+  --color-text-light: #333333;
+  --color-text-dark: #FFFFFF;
+
+  /* Functional */
+  --color-success: #2ECC71;
+  --color-error: #E74C3C;
+  --color-warning: #F39C12;
+}
+
+@layer base {
+  * {
+    @apply box-border;
+  }
+
+  html, body {
+    @apply h-full w-full m-0 p-0;
+  }
+
+  body {
+    @apply font-sans bg-white text-gray-900 antialiased;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  button {
+    @apply cursor-pointer;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply px-6 py-3 bg-primary text-white rounded-lg font-semibold
+           hover:bg-primary-dark transition-colors duration-200
+           active:scale-95 transform
+           min-h-[44px] min-w-[44px];
+  }
+
+  .btn-secondary {
+    @apply px-6 py-3 bg-gray-200 text-gray-800 rounded-lg font-semibold
+           hover:bg-gray-300 transition-colors duration-200
+           active:scale-95 transform
+           min-h-[44px] min-w-[44px];
+  }
+
+  .emotion-card {
+    @apply flex flex-col items-center justify-center
+           p-6 rounded-2xl cursor-pointer
+           transition-all duration-200
+           hover:scale-105 active:scale-95
+           min-h-[80px] min-w-[80px];
+  }
+
+  .card {
+    @apply bg-white rounded-2xl shadow-lg p-6;
+  }
+
+  .page-container {
+    @apply min-h-screen w-full flex flex-col items-center justify-center p-4;
+  }
+
+  .breathing-circle {
+    @apply transition-all ease-in-out;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .touch-manipulation {
+    touch-action: manipulation;
+  }
+}
+
+/* Custom animations for breathing */
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Loading spinner */
+.spinner {
+  border: 3px solid rgba(78, 205, 196, 0.1);
+  border-top-color: #4ECDC4;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Fade transitions */
+.fade-enter {
+  opacity: 0;
+}
+
+.fade-enter-active {
+  opacity: 1;
+  transition: opacity 300ms ease-in;
+}
+
+.fade-exit {
+  opacity: 1;
+}
+
+.fade-exit-active {
+  opacity: 0;
+  transition: opacity 300ms ease-out;
+}
+
+/* Slide transitions */
+.slide-enter {
+  transform: translateY(100%);
+}
+
+.slide-enter-active {
+  transform: translateY(0);
+  transition: transform 300ms ease-out;
+}
+
+.slide-exit {
+  transform: translateY(0);
+}
+
+.slide-exit-active {
+  transform: translateY(100%);
+  transition: transform 300ms ease-in;
+}
