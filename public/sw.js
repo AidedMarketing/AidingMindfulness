@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aiding-mindfulness-v1';
+const CACHE_NAME = 'aiding-mindfulness-v2';
 const URLS_TO_CACHE = [
   '/',
   '/index.html',
@@ -72,4 +72,11 @@ self.addEventListener('activate', (event) => {
     })
   );
   self.clients.claim();
+});
+
+// Message event - handle skip waiting
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });

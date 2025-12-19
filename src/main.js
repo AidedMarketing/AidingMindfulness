@@ -7,6 +7,7 @@ import { EmotionPicker } from './components/EmotionPicker.js';
 import { BreathingVisualizer } from './components/BreathingVisualizer.js';
 import { JournalPrompt } from './components/JournalPrompt.js';
 import { CalendarView } from './components/CalendarView.js';
+import { UpdateNotifier } from './components/UpdateNotifier.js';
 import { breathingTechniques } from './data/breathingTechniques.js';
 import { emotions } from './data/emotions.js';
 import { getTimeOfDay } from './utils/dateHelpers.js';
@@ -51,8 +52,40 @@ class AidingMindfulnessApp {
   async registerServiceWorker() {
     if ('serviceWorker' in navigator) {
       try {
-        await navigator.serviceWorker.register('/sw.js');
+        const registration = await navigator.serviceWorker.register('/sw.js');
         console.log('Service Worker registered successfully');
+
+        // Check for updates on page load
+        registration.update();
+
+        // Listen for updates
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+
+          newWorker.addEventListener('statechange', () => {
+            // When the new service worker is installed and waiting to activate
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              // New service worker is waiting to take over
+              console.log('New service worker available');
+
+              // Show update notification
+              const updateNotifier = new UpdateNotifier();
+              updateNotifier.show(registration);
+            }
+          });
+        });
+
+        // Also check if there's already a waiting service worker
+        if (registration.waiting) {
+          const updateNotifier = new UpdateNotifier();
+          updateNotifier.show(registration);
+        }
+
+        // Check for updates every hour
+        setInterval(() => {
+          registration.update();
+        }, 60 * 60 * 1000); // Check every hour
+
       } catch (error) {
         console.warn('Service Worker registration failed:', error);
       }
