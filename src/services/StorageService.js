@@ -161,20 +161,104 @@ export class StorageService {
     });
   }
 
-  async importData(data) {
+  async importData(data, options = { merge: true }) {
+    // Validate data structure
+    if (!data || typeof data !== 'object') {
+      throw new Error('Invalid import data: must be an object');
+    }
+
+    // Check version compatibility
+    if (data.version && data.version > this.DB_VERSION) {
+      throw new Error(
+        `Import data version (${data.version}) is newer than current app version (${this.DB_VERSION}). ` +
+        'Please update the app before importing.'
+      );
+    }
+
+    const stats = {
+      sessionsImported: 0,
+      settingsImported: 0,
+      errors: []
+    };
+
     // Import sessions
-    if (data.sessions) {
+    if (data.sessions && Array.isArray(data.sessions)) {
       for (const session of data.sessions) {
-        await this.saveSession(session);
+        try {
+          // Validate session has required fields
+          if (!session.id) {
+            stats.errors.push(`Skipped session without ID`);
+            continue;
+          }
+
+          // If not merging, skip if session already exists
+          if (!options.merge) {
+            const existing = await this.getSession(session.id);
+            if (existing) {
+              continue;
+            }
+          }
+
+          await this.saveSession(session);
+          stats.sessionsImported++;
+        } catch (error) {
+          stats.errors.push(`Failed to import session ${session.id}: ${error.message}`);
+        }
       }
     }
 
     // Import settings
-    if (data.settings) {
+    if (data.settings && Array.isArray(data.settings)) {
       for (const setting of data.settings) {
-        await this.saveSetting(setting.id, setting.value);
+        try {
+          if (!setting.id) {
+            stats.errors.push(`Skipped setting without ID`);
+            continue;
+          }
+
+          await this.saveSetting(setting.id, setting.value);
+          stats.settingsImported++;
+        } catch (error) {
+          stats.errors.push(`Failed to import setting ${setting.id}: ${error.message}`);
+        }
       }
     }
+
+    return stats;
+  }
+
+  async validateImportData(data) {
+    const issues = [];
+
+    if (!data || typeof data !== 'object') {
+      issues.push('Data must be a valid object');
+      return { valid: false, issues };
+    }
+
+    if (!data.sessions && !data.settings) {
+      issues.push('Data must contain sessions or settings');
+    }
+
+    if (data.sessions && !Array.isArray(data.sessions)) {
+      issues.push('Sessions must be an array');
+    }
+
+    if (data.settings && !Array.isArray(data.settings)) {
+      issues.push('Settings must be an array');
+    }
+
+    if (data.version && typeof data.version !== 'number') {
+      issues.push('Version must be a number');
+    }
+
+    return {
+      valid: issues.length === 0,
+      issues,
+      sessionCount: data.sessions?.length || 0,
+      settingCount: data.settings?.length || 0,
+      exportDate: data.exportDate,
+      version: data.version
+    };
   }
 
   generateUUID() {
