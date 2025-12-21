@@ -1,9 +1,19 @@
 import { ClaudeAPI } from './ClaudeAPI.js';
 import { getTimeOfDay, getTimeOfDayFromTimestamp, getDayName } from '../utils/dateHelpers.js';
+import { emotions } from '../data/emotions.js';
 
 export class AIRecommendationEngine {
   constructor(storageService) {
     this.storage = storageService;
+  }
+
+  getEmotionData(emotionKey) {
+    return emotions[emotionKey] || {
+      arousal: 'moderate',
+      valence: 'negative',
+      wheelCategory: 'unknown',
+      aiContext: 'User needs emotional regulation'
+    };
   }
 
   async getRecommendation(currentMood) {
@@ -42,46 +52,115 @@ export class AIRecommendationEngine {
   }
 
   buildPrompt(context) {
-    return `You are a breathing exercise advisor for a mindfulness app called "Aiding Mindfulness".
+    const { emotion, intensity } = context.currentMood;
+    const emotionData = this.getEmotionData(emotion);
 
-Current Context:
-- Mood: ${context.currentMood.emotion} (intensity: ${context.currentMood.intensity}/10)
+    return `You are an expert breathing exercise advisor for "Aiding Mindfulness", a mindfulness app.
+
+CURRENT USER STATE:
+- Emotion: ${emotion} (${emotionData.arousal || 'moderate'} arousal, ${emotionData.valence || 'negative'} valence)
+- Intensity: ${intensity}/10
+- Emotion wheel category: ${emotionData.wheelCategory || 'unknown'}
+- Physiological context: ${emotionData.aiContext || 'User needs regulation'}
 - Time: ${context.timeOfDay} (${getDayName(context.dayOfWeek)})
 - Sessions completed: ${context.totalSessions}
 - Current streak: ${context.currentStreak} days
 - Recent patterns: ${JSON.stringify(context.patterns, null, 2)}
-- What's worked before: ${JSON.stringify(context.effectiveness, null, 2)}
+- Historical effectiveness: ${JSON.stringify(context.effectiveness, null, 2)}
 
-Available Techniques:
+AVAILABLE BREATHING TECHNIQUES:
+
 1. 4-7-8 Breathing (5 min, 8 cycles)
-   - Best for: acute anxiety, sleep preparation, panic management
-   - Mechanism: Activates parasympathetic nervous system
-   - Evidence: Reduces heart rate within 4 cycles
+   Physiological Effect: Rapid parasympathetic activation, reduces heart rate & cortisol
+   Best For: High arousal negative states (anxiety, panic, anger), sleep preparation
+   Contraindications: May be too slow for very-low arousal states (numb, tired)
+   Evidence: Reduces sympathetic activation within 4 cycles, lowers blood pressure
+   Mechanism: Extended exhale (8s) activates vagus nerve → immediate calming
 
 2. Box Breathing (5 min, 12 cycles)
-   - Best for: stress management, focus, performance situations
-   - Mechanism: Creates autonomic balance and mental clarity
-   - Evidence: Used by Navy SEALs, improves concentration
+   Physiological Effect: Autonomic nervous system balance, mental clarity
+   Best For: Moderate arousal states (stress, frustration), focus/performance needs
+   Contraindications: May feel rigid for positive states, less effective for extreme arousal
+   Evidence: Navy SEAL training standard, improves concentration & decision-making
+   Mechanism: Equal breath phases (4s each) create equilibrium & cognitive control
 
 3. Coherent Breathing (10 min, 55 cycles)
-   - Best for: daily maintenance, building HRV, long-term resilience
-   - Mechanism: Optimizes heart rate variability at 5.5 breaths/min
-   - Evidence: Improves cognitive function and stress resilience
+   Physiological Effect: Optimizes heart rate variability (HRV), builds resilience
+   Best For: Low-moderate arousal (calm, grateful, content), daily maintenance, positive states
+   Contraindications: May be too long/slow for crisis states, requires patience
+   Evidence: 5.5 breaths/min maximizes HRV, improves stress resilience long-term
+   Mechanism: Resonant frequency breathing synchronizes cardiovascular & respiratory rhythms
 
-Recommendation Rules:
-- Consider their current emotional state AND intensity
-- Factor in time of day (e.g., coherent better for morning routine, 4-7-8 for bedtime)
-- Use past effectiveness data - if box breathing consistently works for them when stressed, prioritize it
-- Detect patterns (e.g., "stressed every Monday afternoon" → proactive recommendation)
-- Balance variety and what works (don't always recommend same technique)
-- For first-time users, start with technique that matches mood best
-- For experienced users, consider their preferences and history
+EMOTION WHEEL FRAMEWORK - MATCHING GUIDE:
 
-Return ONLY valid JSON (no markdown, no explanation):
+Fear-based (anxious, worried, overwhelmed):
+→ High intensity (7+): 4-7-8 for rapid calming
+→ Moderate intensity (4-6): Box for regaining control
+→ Low intensity (1-3): Coherent for building confidence
+
+Anger-based (angry, frustrated, irritated):
+→ High intensity (7+): 4-7-8 to cool down first
+→ Moderate intensity (4-6): Box for perspective & regulation
+→ Low intensity (1-3): Coherent for processing & reflection
+
+Sadness-based (sad, lonely, grief):
+→ Very low arousal (numb, depleted): Coherent for gentle activation
+→ Moderate (4-6): Box or Coherent for emotional resilience
+→ Avoid: 4-7-8 may deepen low arousal states
+
+Positive states (calm, grateful, content, hopeful):
+→ Always: Coherent to deepen & savor the state
+→ High positive arousal: Coherent to channel energy productively
+→ Maintenance: Build HRV resilience when feeling good
+
+Overwhelm/Dysregulation:
+→ Intensity 8+: Start with 4-7-8 to stabilize
+→ After stabilization: Box for control, then Coherent for integration
+
+ADVANCED RECOMMENDATION RULES:
+
+1. AROUSAL MATCHING:
+   - High arousal (anxious, angry, overwhelmed) → downregulate with 4-7-8
+   - Moderate arousal (stressed, frustrated, restless) → balance with Box
+   - Low arousal (sad, tired, numb) → avoid 4-7-8, prefer Coherent or Box
+   - Positive states → Coherent to deepen and build resilience
+
+2. TIME OF DAY OPTIMIZATION:
+   - Morning (calm/positive) → Coherent for daily practice
+   - Morning (negative) → Box for focus & readiness
+   - Afternoon (stress/overwhelm) → Box for reset
+   - Evening (any negative) → 4-7-8 for wind-down
+   - Night (positive) → Coherent for reflection & gratitude
+
+3. PERSONALIZATION (Use historical data):
+   - If technique has >70% success rate for this emotion → strongly favor it
+   - If user does same emotion repeatedly → acknowledge pattern & recommend prevention
+   - If new user → prioritize arousal matching over history
+   - If experienced user (10+ sessions) → consider preferences & variety
+
+4. INTENSITY THRESHOLDS:
+   - Intensity 8-10 (crisis): 4-7-8 unless low arousal emotion (then Box)
+   - Intensity 5-7 (elevated): Box for most, 4-7-8 for fear/anger
+   - Intensity 3-4 (mild): Coherent unless specific need
+   - Intensity 1-2 (positive/maintenance): Coherent
+
+5. PATTERN DETECTION:
+   - Same emotion same day/time → proactive recommendation
+   - Declining effectiveness → suggest technique rotation
+   - Positive trend → acknowledge & encourage deepening
+
+6. AVOID:
+   - Generic recommendations ignoring arousal/valence
+   - Recommending same technique >3 sessions in a row (unless highly effective)
+   - Ignoring intensity level
+   - Toxic positivity language
+   - Recommending 4-7-8 for numb/tired states
+
+Return ONLY valid JSON (no markdown, no backticks, no explanation):
 {
   "technique": "4-7-8" | "box" | "coherent",
-  "reasoning": "One clear sentence why this is best right now",
-  "personalNote": "One sentence connecting to their history or patterns (or encouraging note for first session)",
+  "reasoning": "One clear sentence explaining physiological/emotional match",
+  "personalNote": "One sentence connecting to their history/patterns OR acknowledging their current state",
   "confidence": 0-100
 }`;
   }
@@ -90,52 +169,115 @@ Return ONLY valid JSON (no markdown, no explanation):
     const mood = context.currentMood.emotion;
     const intensity = context.currentMood.intensity;
     const timeOfDay = context.timeOfDay;
+    const emotionData = this.getEmotionData(mood);
+    const arousal = emotionData.arousal;
+    const valence = emotionData.valence;
 
-    // High-intensity emotions → 4-7-8
-    if (intensity >= 7 && ['anxious', 'stressed'].includes(mood)) {
+    // CRISIS STATE: Very high intensity (8-10) → Rapid intervention
+    if (intensity >= 8) {
+      // High arousal crisis (anxious, angry, overwhelmed) → 4-7-8
+      if (arousal.includes('high')) {
+        return {
+          technique: '4-7-8',
+          reasoning: 'Intense emotions need rapid parasympathetic activation',
+          personalNote: 'This technique calms your nervous system quickly',
+          confidence: 90
+        };
+      }
+      // Low arousal crisis (very sad, numb) → Box for stabilization
       return {
-        technique: '4-7-8',
-        reasoning: 'High intensity requires quick parasympathetic activation',
-        personalNote: 'This technique works fast for intense feelings',
+        technique: 'box',
+        reasoning: 'Box breathing provides structure and grounding in difficult moments',
+        personalNote: 'Focus on the rhythm to regain stability',
         confidence: 85
       };
     }
 
-    // Evening + any negative emotion → 4-7-8
-    if (timeOfDay === 'night' && intensity > 5) {
+    // HIGH AROUSAL NEGATIVE (7+): Anxious, Angry, Overwhelmed, Restless
+    if (intensity >= 7 && arousal.includes('high') && valence === 'negative') {
+      // Evening → 4-7-8 for wind-down
+      if (timeOfDay === 'night') {
+        return {
+          technique: '4-7-8',
+          reasoning: 'Evening high arousal needs calming for sleep preparation',
+          personalNote: 'Let the extended exhales release the tension',
+          confidence: 85
+        };
+      }
+      // Daytime → 4-7-8 for quick calming
       return {
         technique: '4-7-8',
-        reasoning: 'Evening session benefits from sleep-promoting breathing',
-        personalNote: 'Perfect for winding down before rest',
-        confidence: 80
+        reasoning: 'High activation needs parasympathetic downregulation',
+        personalNote: 'This will help bring you back to baseline quickly',
+        confidence: 85
       };
     }
 
-    // Stressed/restless + daytime → Box
-    if (['stressed', 'restless'].includes(mood) && timeOfDay !== 'night') {
+    // MODERATE AROUSAL NEGATIVE (4-7): Stressed, Frustrated
+    if (intensity >= 4 && intensity < 7 && arousal.includes('moderate') && valence === 'negative') {
       return {
         technique: 'box',
-        reasoning: 'Box breathing brings focus and grounding',
-        personalNote: 'Great for regaining control and clarity',
+        reasoning: 'Box breathing creates autonomic balance and mental clarity',
+        personalNote: 'The equal rhythm helps regain control and focus',
         confidence: 80
       };
     }
 
-    // Morning or calm state → Coherent
-    if (timeOfDay === 'morning' || mood === 'calm' || intensity <= 4) {
+    // LOW AROUSAL NEGATIVE (any intensity): Sad, Lonely, Tired, Numb
+    if (arousal.includes('low') && valence === 'negative') {
+      // Very low arousal (numb, tired high intensity) → Coherent for gentle activation
+      if (['numb', 'tired'].includes(mood) || intensity >= 6) {
+        return {
+          technique: 'coherent',
+          reasoning: 'Gentle rhythmic breathing provides activation without overwhelm',
+          personalNote: 'This practice meets you where you are with gentleness',
+          confidence: 75
+        };
+      }
+      // Moderate sadness/loneliness → Box or Coherent
       return {
-        technique: 'coherent',
-        reasoning: 'Daily coherent practice builds long-term resilience',
-        personalNote: 'Excellent for maintaining balance',
+        technique: 'box',
+        reasoning: 'Structured breathing builds emotional resilience',
+        personalNote: 'Focus helps process difficult emotions',
         confidence: 75
       };
     }
 
-    // Default → Coherent
+    // POSITIVE STATES (any arousal): Calm, Grateful, Content, Hopeful
+    if (valence === 'positive') {
+      return {
+        technique: 'coherent',
+        reasoning: 'Build resilience and deepen positive states with HRV optimization',
+        personalNote: 'Great time to strengthen your practice foundation',
+        confidence: 85
+      };
+    }
+
+    // EVENING + ANY NEGATIVE (not caught above)
+    if (timeOfDay === 'night' && valence === 'negative' && intensity >= 5) {
+      return {
+        technique: '4-7-8',
+        reasoning: 'Evening practice benefits from sleep-promoting breathing',
+        personalNote: 'Perfect for transitioning into rest mode',
+        confidence: 80
+      };
+    }
+
+    // MORNING PRACTICE (any state, low-moderate intensity)
+    if (timeOfDay === 'morning' && intensity <= 5) {
+      return {
+        technique: 'coherent',
+        reasoning: 'Morning coherent practice sets a resilient tone for your day',
+        personalNote: 'Daily practice builds long-term nervous system regulation',
+        confidence: 75
+      };
+    }
+
+    // DEFAULT FALLBACK → Coherent (safe for most states)
     return {
       technique: 'coherent',
-      reasoning: 'Coherent breathing is excellent for overall well-being',
-      personalNote: 'A solid choice for most situations',
+      reasoning: 'Coherent breathing is versatile and builds overall resilience',
+      personalNote: 'A solid foundation practice for any emotional state',
       confidence: 70
     };
   }
