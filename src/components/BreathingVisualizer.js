@@ -243,6 +243,10 @@ export class BreathingVisualizer {
     if (this.phaseTimer) {
       clearTimeout(this.phaseTimer);
     }
+    // Clean up visual animation
+    if (this.visual && typeof this.visual.destroy === 'function') {
+      this.visual.destroy();
+    }
     if (this.container && this.container.parentNode) {
       this.container.parentNode.removeChild(this.container);
     }
@@ -417,14 +421,22 @@ class BoxBreathingVisual {
   }
 }
 
-// Wave Breathing Visual
+// Wave Breathing Visual - Flowing Animation
 class WaveBreathingVisual {
   constructor(container, config) {
     this.container = container;
     this.config = config;
     this.svg = null;
-    this.wave = null;
+    this.waves = [];
+    this.animationId = null;
+    this.phaseOffset = 0;
+    this.targetCenterY = 150;
+    this.currentCenterY = 150;
+    this.targetAmplitude = 40;
+    this.currentAmplitude = 40;
+    this.isAnimating = false;
     this.init();
+    this.startContinuousAnimation();
   }
 
   init() {
@@ -432,32 +444,83 @@ class WaveBreathingVisual {
     svg.setAttribute('viewBox', '0 0 300 300');
     svg.setAttribute('class', 'w-full h-full');
 
-    // Create sine wave path
-    const wave = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    wave.setAttribute('d', this.getSinePath(150));
-    wave.setAttribute('stroke', this.config.color);
-    wave.setAttribute('stroke-width', '8');
-    wave.setAttribute('fill', 'none');
-    wave.setAttribute('stroke-linecap', 'round');
+    // Create multiple wave layers for depth
+    const waveLayers = [
+      { opacity: 0.3, amplitudeScale: 0.6, frequencyScale: 1.2, strokeWidth: 6, speed: 0.5 },
+      { opacity: 0.5, amplitudeScale: 0.8, frequencyScale: 1.0, strokeWidth: 7, speed: 0.7 },
+      { opacity: 0.8, amplitudeScale: 1.0, frequencyScale: 0.9, strokeWidth: 8, speed: 1.0 }
+    ];
 
-    svg.appendChild(wave);
+    waveLayers.forEach((layer) => {
+      const wave = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      wave.setAttribute('stroke', this.config.color);
+      wave.setAttribute('stroke-width', layer.strokeWidth.toString());
+      wave.setAttribute('fill', 'none');
+      wave.setAttribute('stroke-linecap', 'round');
+      wave.setAttribute('stroke-linejoin', 'round');
+      wave.setAttribute('opacity', layer.opacity.toString());
+
+      svg.appendChild(wave);
+      this.waves.push({ element: wave, config: layer });
+    });
+
     this.container.appendChild(svg);
-
     this.svg = svg;
-    this.wave = wave;
   }
 
-  getSinePath(y) {
-    const amplitude = 50;
-    const frequency = 2;
+  getSinePath(centerY, amplitude, phaseOffset, layerConfig) {
+    const frequency = 2 * layerConfig.frequencyScale;
     const points = [];
+    const layerPhaseOffset = phaseOffset * layerConfig.speed;
 
     for (let x = 0; x <= 300; x += 2) {
-      const yPos = y + amplitude * Math.sin((x / 300) * Math.PI * frequency);
+      const angle = ((x / 300) * Math.PI * frequency) + layerPhaseOffset;
+      const yPos = centerY + (amplitude * layerConfig.amplitudeScale * Math.sin(angle));
       points.push(`${x},${yPos}`);
     }
 
     return 'M' + points.join(' L');
+  }
+
+  startContinuousAnimation() {
+    this.isAnimating = true;
+
+    const animate = () => {
+      if (!this.isAnimating) return;
+
+      // Update phase offset for flowing effect
+      this.phaseOffset += 0.02;
+      if (this.phaseOffset > Math.PI * 2) {
+        this.phaseOffset -= Math.PI * 2;
+      }
+
+      // Smoothly interpolate to target values
+      this.currentCenterY += (this.targetCenterY - this.currentCenterY) * 0.02;
+      this.currentAmplitude += (this.targetAmplitude - this.currentAmplitude) * 0.02;
+
+      // Update all wave layers
+      this.waves.forEach(({ element, config }) => {
+        const path = this.getSinePath(
+          this.currentCenterY,
+          this.currentAmplitude,
+          this.phaseOffset,
+          config
+        );
+        element.setAttribute('d', path);
+      });
+
+      this.animationId = requestAnimationFrame(animate);
+    };
+
+    animate();
+  }
+
+  stopContinuousAnimation() {
+    this.isAnimating = false;
+    if (this.animationId) {
+      cancelAnimationFrame(this.animationId);
+      this.animationId = null;
+    }
   }
 
   async animatePhase(phase) {
@@ -474,16 +537,16 @@ class WaveBreathingVisual {
 
   riseWave(duration) {
     return new Promise(resolve => {
-      this.wave.style.transition = `all ${duration}s ease-in-out`;
-      this.wave.setAttribute('d', this.getSinePath(100));
+      this.targetCenterY = 120;
+      this.targetAmplitude = 55;
       setTimeout(resolve, duration * 1000);
     });
   }
 
   lowerWave(duration) {
     return new Promise(resolve => {
-      this.wave.style.transition = `all ${duration}s ease-in-out`;
-      this.wave.setAttribute('d', this.getSinePath(200));
+      this.targetCenterY = 180;
+      this.targetAmplitude = 30;
       setTimeout(resolve, duration * 1000);
     });
   }
@@ -492,5 +555,9 @@ class WaveBreathingVisual {
     return new Promise(resolve => {
       setTimeout(resolve, duration * 1000);
     });
+  }
+
+  destroy() {
+    this.stopContinuousAnimation();
   }
 }
