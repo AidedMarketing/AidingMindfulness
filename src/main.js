@@ -614,6 +614,10 @@ class AidingMindfulnessApp {
               <button id="export-data" class="btn-secondary w-full">
                 📥 Export Data
               </button>
+              <button id="import-data" class="btn-secondary w-full">
+                📤 Import Data
+              </button>
+              <input type="file" id="import-file-input" accept=".json,application/json" style="display: none;">
               <button id="clear-data" class="btn-secondary w-full bg-red-50 hover:bg-red-100 text-red-700">
                 🗑️ Clear All Data
               </button>
@@ -661,6 +665,73 @@ class AidingMindfulnessApp {
       a.click();
       URL.revokeObjectURL(url);
       HapticService.trigger('selection');
+    });
+
+    // Import data - trigger file input
+    document.getElementById('import-data')?.addEventListener('click', () => {
+      HapticService.trigger('selection');
+      document.getElementById('import-file-input')?.click();
+    });
+
+    // Import data - handle file selection
+    document.getElementById('import-file-input')?.addEventListener('change', async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      try {
+        // Read file
+        const text = await file.text();
+        const data = JSON.parse(text);
+
+        // Validate data
+        const validation = await this.storage.validateImportData(data);
+        if (!validation.valid) {
+          alert(`Invalid import file:\n${validation.issues.join('\n')}`);
+          return;
+        }
+
+        // Show preview and confirm
+        const message = `Import Preview:\n\n` +
+          `📊 Sessions: ${validation.sessionCount}\n` +
+          `⚙️ Settings: ${validation.settingCount}\n` +
+          `📅 Exported: ${validation.exportDate ? new Date(validation.exportDate).toLocaleString() : 'Unknown'}\n` +
+          `🔢 Version: ${validation.version || 'Unknown'}\n\n` +
+          `This will merge with your existing data. Continue?`;
+
+        if (!confirm(message)) {
+          return;
+        }
+
+        // Import data
+        const stats = await this.storage.importData(data, { merge: true });
+
+        // Show results
+        let resultMessage = `Import Complete!\n\n` +
+          `✅ Sessions imported: ${stats.sessionsImported}\n` +
+          `✅ Settings imported: ${stats.settingsImported}`;
+
+        if (stats.errors.length > 0) {
+          resultMessage += `\n\n⚠️ Errors (${stats.errors.length}):\n` +
+            stats.errors.slice(0, 5).join('\n');
+          if (stats.errors.length > 5) {
+            resultMessage += `\n... and ${stats.errors.length - 5} more`;
+          }
+        }
+
+        alert(resultMessage);
+        HapticService.trigger('success');
+
+        // Refresh to show new data
+        this.showHome();
+
+      } catch (error) {
+        console.error('Import error:', error);
+        alert(`Failed to import data:\n${error.message}`);
+        HapticService.trigger('error');
+      } finally {
+        // Reset file input
+        event.target.value = '';
+      }
     });
 
     // Clear data
