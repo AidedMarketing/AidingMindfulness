@@ -7,7 +7,8 @@ export class JournalEditor {
     this.onFinish = onFinish;
     this.text = '';
     this.isTyping = false;
-    this.typingTimeout = null;
+    this.topBarTimeout = null;
+    this.finishBtnTimeout = null;
     this.container = null;
     this.textarea = null;
     this.topBar = null;
@@ -40,7 +41,7 @@ export class JournalEditor {
       </div>
 
       <!-- Journal Text Area -->
-      <div class="flex-1 flex flex-col p-6 pt-20">
+      <div class="flex-1 flex flex-col p-6 pt-20 pb-32">
         <textarea
           id="journal-textarea"
           class="flex-1 w-full bg-transparent border-none outline-none resize-none
@@ -49,14 +50,14 @@ export class JournalEditor {
           placeholder="This will burn. Write freely."
           style="font-size: 18px; line-height: 1.7;"
         ></textarea>
+      </div>
 
-        <!-- Finish Button (scrolls with content) -->
-        <div class="mt-6 sticky bottom-6">
-          <button id="finish-btn" class="btn-primary w-full">
-            <span id="finish-text">I'm Finished</span>
-            <span id="word-count" class="ml-2 text-sm opacity-75"></span>
-          </button>
-        </div>
+      <!-- Finish Button (fixed to bottom, auto-hides while typing) -->
+      <div id="finish-button-container" class="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-cream via-cream to-transparent dark:from-charcoal dark:via-charcoal pointer-events-none opacity-0 transition-opacity duration-300" style="padding-top: 3rem;">
+        <button id="finish-btn" class="btn-primary w-full pointer-events-auto">
+          <span id="finish-text">I'm Finished</span>
+          <span id="word-count" class="ml-2 text-sm opacity-75"></span>
+        </button>
       </div>
     `;
 
@@ -66,6 +67,7 @@ export class JournalEditor {
     this.textarea = document.getElementById('journal-textarea');
     this.topBar = document.getElementById('journal-top-bar');
     this.finishButton = document.getElementById('finish-btn');
+    this.finishButtonContainer = document.getElementById('finish-button-container');
   }
 
   attachEventListeners() {
@@ -90,22 +92,31 @@ export class JournalEditor {
   }
 
   onTyping() {
-    // Hide top bar while typing
+    // Hide UI while typing
     this.topBar.classList.remove('visible');
     this.topBar.classList.add('hidden');
+    this.finishButtonContainer.style.opacity = '0';
     this.isTyping = true;
 
-    // Clear previous timeout
-    if (this.typingTimeout) {
-      clearTimeout(this.typingTimeout);
+    // Clear previous timeouts
+    if (this.topBarTimeout) {
+      clearTimeout(this.topBarTimeout);
+    }
+    if (this.finishBtnTimeout) {
+      clearTimeout(this.finishBtnTimeout);
     }
 
     // Show top bar after 3 seconds of no typing
-    this.typingTimeout = setTimeout(() => {
-      this.isTyping = false;
+    this.topBarTimeout = setTimeout(() => {
       this.topBar.classList.remove('hidden');
       this.topBar.classList.add('visible');
     }, 3000);
+
+    // Show finish button after 1.5 seconds (shorter pause)
+    this.finishBtnTimeout = setTimeout(() => {
+      this.isTyping = false;
+      this.finishButtonContainer.style.opacity = '1';
+    }, 1500);
   }
 
   updateWordCount() {
@@ -140,8 +151,11 @@ export class JournalEditor {
   }
 
   destroy() {
-    if (this.typingTimeout) {
-      clearTimeout(this.typingTimeout);
+    if (this.topBarTimeout) {
+      clearTimeout(this.topBarTimeout);
+    }
+    if (this.finishBtnTimeout) {
+      clearTimeout(this.finishBtnTimeout);
     }
   }
 }
