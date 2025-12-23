@@ -61,20 +61,14 @@ class BurningJournalApp {
   }
 
   setupDarkMode() {
-    // Check system preference
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    // Default to light mode for best burning animation effect
+    // Only use dark mode if user explicitly saved it
     const savedMode = localStorage.getItem('darkMode');
 
-    if (savedMode === 'dark' || (savedMode === null && prefersDark)) {
+    if (savedMode === 'dark') {
       document.body.classList.add('dark');
     }
-
-    // Listen for system changes
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-      if (localStorage.getItem('darkMode') === null) {
-        document.body.classList.toggle('dark', e.matches);
-      }
-    });
+    // Otherwise stay in light mode (no automatic dark mode detection)
   }
 
   toggleDarkMode() {
