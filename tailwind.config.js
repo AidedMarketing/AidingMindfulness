@@ -4,40 +4,61 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        primary: {
-          DEFAULT: '#4ECDC4',
-          dark: '#3BA39C',
-        },
-        emotions: {
-          anxious: '#FF6B6B',
-          stressed: '#FFA500',
-          sad: '#6B8EFF',
-          restless: '#FFD700',
-          tired: '#9B9B9B',
-          calm: '#4ECDC4',
-        },
-        success: '#2ECC71',
-        error: '#E74C3C',
-        warning: '#F39C12',
+        // Light mode - Warm & Earthy
+        cream: '#FFF8E7',
+        'dark-brown': '#3A3532',
+        ember: '#E17055',
+        sage: '#81C784',
+        'muted-text': '#8B8680',
+
+        // Dark mode - Warm Charcoal
+        charcoal: '#252220',
+        'warm-white': '#F5F1E8',
+        'soft-ember': '#FF8A65',
+        'muted-sage': '#6B9B73',
+        'muted-dark': '#9E958E',
       },
       fontFamily: {
-        sans: ['Inter', 'SF Pro Display', 'system-ui', 'sans-serif'],
+        sans: ['-apple-system', 'BlinkMacSystemFont', 'SF Pro Display', 'Inter', 'system-ui', 'sans-serif'],
       },
       animation: {
-        'breathe-in': 'expand 4s ease-in-out',
-        'breathe-out': 'contract 4s ease-in-out',
+        'burn-curl': 'curl 3.5s ease-out forwards',
+        'burn-ignite': 'ignite 2.5s ease-out forwards',
+        'burn-ash': 'ash 2s ease-out forwards',
+        'fade-out': 'fade-out 1s ease-out forwards',
+        'bloom': 'bloom 0.5s ease-out forwards',
+        'pulse-gentle': 'pulse-gentle 1.5s ease-in-out infinite',
       },
       keyframes: {
-        expand: {
-          '0%': { transform: 'scale(1)' },
-          '100%': { transform: 'scale(2.4)' },
+        curl: {
+          '0%': { transform: 'rotate(0deg) scale(1)' },
+          '100%': { transform: 'rotate(2deg) scale(0.98)', filter: 'sepia(0.3)' },
         },
-        contract: {
-          '0%': { transform: 'scale(2.4)' },
-          '100%': { transform: 'scale(1)' },
+        ignite: {
+          '0%': { opacity: '0', filter: 'brightness(1)' },
+          '50%': { opacity: '1', filter: 'brightness(1.4) saturate(1.5)' },
+          '100%': { opacity: '0.8', filter: 'brightness(1.2) saturate(1.3)' },
+        },
+        ash: {
+          '0%': { opacity: '1', transform: 'translateY(0) scale(1)' },
+          '100%': { opacity: '0', transform: 'translateY(-50px) scale(0.5)' },
+        },
+        'fade-out': {
+          '0%': { opacity: '1' },
+          '100%': { opacity: '0' },
+        },
+        bloom: {
+          '0%': { transform: 'scale(0) rotate(-180deg)', opacity: '0' },
+          '60%': { transform: 'scale(1.1) rotate(10deg)' },
+          '100%': { transform: 'scale(1) rotate(0deg)', opacity: '1' },
+        },
+        'pulse-gentle': {
+          '0%, 100%': { opacity: '1', transform: 'scale(1)' },
+          '50%': { opacity: '0.7', transform: 'scale(1.05)' },
         },
       },
     },
