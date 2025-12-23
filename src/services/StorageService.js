@@ -1,8 +1,14 @@
+import { getEffectiveDate } from '../utils/dateHelpers.js';
+
+/**
+ * Storage service for journal entries
+ * Entry schema: { date: "YYYY-MM-DD", emotion: "joy" | null }
+ */
 export class StorageService {
   constructor() {
     this.db = null;
-    this.DB_NAME = 'AidingMindfulness';
-    this.DB_VERSION = 1;
+    this.DB_NAME = 'BurningJournal';
+    this.DB_VERSION = 2; // Incremented for new schema
   }
 
   async init() {
@@ -18,12 +24,14 @@ export class StorageService {
       request.onupgradeneeded = (event) => {
         const db = event.target.result;
 
-        // Create sessions store
-        if (!db.objectStoreNames.contains('sessions')) {
-          const sessionsStore = db.createObjectStore('sessions', { keyPath: 'id' });
-          sessionsStore.createIndex('timestamp', 'timestamp', { unique: false });
-          sessionsStore.createIndex('emotion', 'moodBefore.emotion', { unique: false });
-          sessionsStore.createIndex('technique', 'breathingTechnique', { unique: false });
+        // Delete old stores if they exist (migration from old app)
+        if (db.objectStoreNames.contains('sessions')) {
+          db.deleteObjectStore('sessions');
+        }
+
+        // Create entries store with date as key
+        if (!db.objectStoreNames.contains('entries')) {
+          db.createObjectStore('entries', { keyPath: 'date' });
         }
 
         // Create settings store
@@ -34,27 +42,65 @@ export class StorageService {
     });
   }
 
-  async saveSession(session) {
-    const tx = this.db.transaction(['sessions'], 'readwrite');
-    const store = tx.objectStore('sessions');
+  /**
+   * Save journal entry (date + optional emotion)
+   * @param {string} date - YYYY-MM-DD format
+   * @param {string|null} emotion - Emotion key or null
+   */
+  async saveEntry(date, emotion = null) {
+    const tx = this.db.transaction(['entries'], 'readwrite');
+    const store = tx.objectStore('entries');
 
-    // Generate ID if not present
-    if (!session.id) {
-      session.id = this.generateUUID();
-    }
+    const entry = {
+      date,
+      emotion
+    };
 
-    // Add timestamp if not present
-    if (!session.timestamp) {
-      session.timestamp = new Date().toISOString();
-    }
-
-    await store.put(session);
-    return session;
+    await store.put(entry);
+    return entry;
   }
 
-  async getAllSessions() {
-    const tx = this.db.transaction(['sessions'], 'readonly');
-    const store = tx.objectStore('sessions');
+  /**
+   * Get entry for a specific date
+   * @param {string} date - YYYY-MM-DD format
+   * @returns {Promise<Object|null>}
+   */
+  async getEntry(date) {
+    const tx = this.db.transaction(['entries'], 'readonly');
+    const store = tx.objectStore('entries');
+    const request = store.get(date);
+
+    return new Promise((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
+   * Get entry for today (accounting for 4am cutoff)
+   * @returns {Promise<Object|null>}
+   */
+  async getTodaysEntry() {
+    const today = getEffectiveDate();
+    return this.getEntry(today);
+  }
+
+  /**
+   * Check if user has journaled today
+   * @returns {Promise<boolean>}
+   */
+  async hasJournaledToday() {
+    const entry = await this.getTodaysEntry();
+    return entry !== null;
+  }
+
+  /**
+   * Get all entries
+   * @returns {Promise<Array>}
+   */
+  async getAllEntries() {
+    const tx = this.db.transaction(['entries'], 'readonly');
+    const store = tx.objectStore('entries');
     const request = store.getAll();
 
     return new Promise((resolve, reject) => {
@@ -63,45 +109,47 @@ export class StorageService {
     });
   }
 
-  async getSession(id) {
-    const tx = this.db.transaction(['sessions'], 'readonly');
-    const store = tx.objectStore('sessions');
-    const request = store.get(id);
+  /**
+   * Get entries for a specific month
+   * @param {number} year
+   * @param {number} month - 0-11 (JavaScript month indexing)
+   * @returns {Promise<Array>}
+   */
+  async getEntriesForMonth(year, month) {
+    const allEntries = await this.getAllEntries();
+    const targetMonth = month + 1; // Convert to 1-12
 
-    return new Promise((resolve, reject) => {
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
+    return allEntries.filter(entry => {
+      const [entryYear, entryMonth] = entry.date.split('-').map(Number);
+      return entryYear === year && entryMonth === targetMonth;
     });
   }
 
-  async deleteSession(id) {
-    const tx = this.db.transaction(['sessions'], 'readwrite');
-    const store = tx.objectStore('sessions');
-    await store.delete(id);
+  /**
+   * Delete an entry
+   * @param {string} date - YYYY-MM-DD format
+   */
+  async deleteEntry(date) {
+    const tx = this.db.transaction(['entries'], 'readwrite');
+    const store = tx.objectStore('entries');
+    await store.delete(date);
   }
 
-  async getSessionsByDateRange(startDate, endDate) {
-    const allSessions = await this.getAllSessions();
-    return allSessions.filter(session => {
-      const timestamp = new Date(session.timestamp);
-      return timestamp >= startDate && timestamp <= endDate;
-    });
+  /**
+   * Clear all entries
+   */
+  async clearAllEntries() {
+    const tx = this.db.transaction(['entries'], 'readwrite');
+    const store = tx.objectStore('entries');
+    await store.clear();
   }
 
-  async getSessionsForMonth(year, month) {
-    const startDate = new Date(year, month, 1);
-    const endDate = new Date(year, month + 1, 0, 23, 59, 59);
-    return this.getSessionsByDateRange(startDate, endDate);
-  }
-
-  async getSessionsForToday() {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    return this.getSessionsByDateRange(today, tomorrow);
-  }
-
+  /**
+   * Get a setting value
+   * @param {string} key
+   * @param {*} defaultValue
+   * @returns {Promise<*>}
+   */
   async getSetting(key, defaultValue = null) {
     const tx = this.db.transaction(['settings'], 'readonly');
     const store = tx.objectStore('settings');
@@ -115,41 +163,56 @@ export class StorageService {
     });
   }
 
+  /**
+   * Save a setting value
+   * @param {string} key
+   * @param {*} value
+   */
   async saveSetting(key, value) {
     const tx = this.db.transaction(['settings'], 'readwrite');
     const store = tx.objectStore('settings');
     await store.put({ id: key, value });
   }
 
+  /**
+   * Delete a setting
+   * @param {string} key
+   */
   async deleteSetting(key) {
     const tx = this.db.transaction(['settings'], 'readwrite');
     const store = tx.objectStore('settings');
     await store.delete(key);
   }
 
-  async clearAllSessions() {
-    const tx = this.db.transaction(['sessions'], 'readwrite');
-    const store = tx.objectStore('sessions');
-    await store.clear();
-  }
-
+  /**
+   * Clear all settings
+   */
   async clearAllSettings() {
     const tx = this.db.transaction(['settings'], 'readwrite');
     const store = tx.objectStore('settings');
     await store.clear();
   }
 
+  /**
+   * Export all data
+   * @returns {Promise<Object>}
+   */
   async exportData() {
-    const sessions = await this.getAllSessions();
+    const entries = await this.getAllEntries();
     const settings = await this.getAllSettings();
+
     return {
-      sessions,
+      entries,
       settings,
       exportDate: new Date().toISOString(),
       version: this.DB_VERSION
     };
   }
 
+  /**
+   * Get all settings
+   * @returns {Promise<Array>}
+   */
   async getAllSettings() {
     const tx = this.db.transaction(['settings'], 'readonly');
     const store = tx.objectStore('settings');
@@ -161,48 +224,41 @@ export class StorageService {
     });
   }
 
+  /**
+   * Import data
+   * @param {Object} data
+   * @param {Object} options
+   * @returns {Promise<Object>} Stats about import
+   */
   async importData(data, options = { merge: true }) {
-    // Validate data structure
     if (!data || typeof data !== 'object') {
-      throw new Error('Invalid import data: must be an object');
-    }
-
-    // Check version compatibility
-    if (data.version && data.version > this.DB_VERSION) {
-      throw new Error(
-        `Import data version (${data.version}) is newer than current app version (${this.DB_VERSION}). ` +
-        'Please update the app before importing.'
-      );
+      throw new Error('Invalid import data');
     }
 
     const stats = {
-      sessionsImported: 0,
+      entriesImported: 0,
       settingsImported: 0,
       errors: []
     };
 
-    // Import sessions
-    if (data.sessions && Array.isArray(data.sessions)) {
-      for (const session of data.sessions) {
+    // Import entries
+    if (data.entries && Array.isArray(data.entries)) {
+      for (const entry of data.entries) {
         try {
-          // Validate session has required fields
-          if (!session.id) {
-            stats.errors.push(`Skipped session without ID`);
+          if (!entry.date) {
+            stats.errors.push('Skipped entry without date');
             continue;
           }
 
-          // If not merging, skip if session already exists
           if (!options.merge) {
-            const existing = await this.getSession(session.id);
-            if (existing) {
-              continue;
-            }
+            const existing = await this.getEntry(entry.date);
+            if (existing) continue;
           }
 
-          await this.saveSession(session);
-          stats.sessionsImported++;
+          await this.saveEntry(entry.date, entry.emotion);
+          stats.entriesImported++;
         } catch (error) {
-          stats.errors.push(`Failed to import session ${session.id}: ${error.message}`);
+          stats.errors.push(`Failed to import entry ${entry.date}: ${error.message}`);
         }
       }
     }
@@ -212,7 +268,7 @@ export class StorageService {
       for (const setting of data.settings) {
         try {
           if (!setting.id) {
-            stats.errors.push(`Skipped setting without ID`);
+            stats.errors.push('Skipped setting without ID');
             continue;
           }
 
@@ -225,47 +281,5 @@ export class StorageService {
     }
 
     return stats;
-  }
-
-  async validateImportData(data) {
-    const issues = [];
-
-    if (!data || typeof data !== 'object') {
-      issues.push('Data must be a valid object');
-      return { valid: false, issues };
-    }
-
-    if (!data.sessions && !data.settings) {
-      issues.push('Data must contain sessions or settings');
-    }
-
-    if (data.sessions && !Array.isArray(data.sessions)) {
-      issues.push('Sessions must be an array');
-    }
-
-    if (data.settings && !Array.isArray(data.settings)) {
-      issues.push('Settings must be an array');
-    }
-
-    if (data.version && typeof data.version !== 'number') {
-      issues.push('Version must be a number');
-    }
-
-    return {
-      valid: issues.length === 0,
-      issues,
-      sessionCount: data.sessions?.length || 0,
-      settingCount: data.settings?.length || 0,
-      exportDate: data.exportDate,
-      version: data.version
-    };
-  }
-
-  generateUUID() {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-      const r = Math.random() * 16 | 0;
-      const v = c === 'x' ? r : (r & 0x3 | 0x8);
-      return v.toString(16);
-    });
   }
 }

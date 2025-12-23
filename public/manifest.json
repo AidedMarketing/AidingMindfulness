@@ -1,11 +1,11 @@
 {
-  "name": "Aiding Mindfulness",
-  "short_name": "Mindfulness",
-  "description": "AI-powered breathing and journaling for emotional well-being",
+  "name": "Burning Journal",
+  "short_name": "Journal",
+  "description": "Write freely. Your words burn forever. True privacy through ephemeral journaling.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#FFFFFF",
-  "theme_color": "#4ECDC4",
+  "background_color": "#FFF8E7",
+  "theme_color": "#E17055",
   "orientation": "portrait",
   "icons": [
     {
@@ -21,6 +21,6 @@
       "purpose": "any maskable"
     }
   ],
-  "categories": ["health", "lifestyle", "wellness"],
+  "categories": ["health", "lifestyle", "productivity", "utilities"],
   "screenshots": []
 }

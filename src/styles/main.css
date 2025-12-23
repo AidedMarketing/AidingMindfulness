@@ -2,31 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  /* Primary Colors */
-  --color-primary: #4ECDC4;
-  --color-primary-dark: #3BA39C;
-
-  /* Emotion Colors */
-  --color-anxious: #FF6B6B;
-  --color-stressed: #FFA500;
-  --color-sad: #6B8EFF;
-  --color-restless: #FFD700;
-  --color-tired: #9B9B9B;
-  --color-calm: #4ECDC4;
-
-  /* Neutrals */
-  --color-bg-light: #FFFFFF;
-  --color-bg-dark: #1A1A1A;
-  --color-text-light: #333333;
-  --color-text-dark: #FFFFFF;
-
-  /* Functional */
-  --color-success: #2ECC71;
-  --color-error: #E74C3C;
-  --color-warning: #F39C12;
-}
-
 @layer base {
   * {
     @apply box-border;
@@ -36,91 +11,210 @@
     @apply h-full w-full m-0 p-0;
   }
 
+  /* Light mode (default) */
   body {
-    @apply font-sans bg-white text-gray-900 antialiased;
+    @apply font-sans bg-cream text-dark-brown antialiased;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  /* Dark mode */
+  body.dark {
+    @apply bg-charcoal text-warm-white;
   }
 
   button {
     @apply cursor-pointer;
   }
+
+  /* Text selection */
+  ::selection {
+    @apply bg-ember/30;
+  }
+
+  body.dark ::selection {
+    @apply bg-soft-ember/30;
+  }
 }
 
 @layer components {
+  /* Primary button */
   .btn-primary {
-    @apply px-6 py-3 bg-primary text-white rounded-lg font-semibold
-           hover:bg-primary-dark transition-colors duration-200
+    @apply px-6 py-4 bg-ember text-white rounded-xl font-medium
+           hover:bg-ember/90 transition-all duration-200
            active:scale-95 transform
-           min-h-[44px] min-w-[44px];
+           min-h-[48px] shadow-sm;
   }
 
+  body.dark .btn-primary {
+    @apply bg-soft-ember hover:bg-soft-ember/90;
+  }
+
+  /* Secondary button */
   .btn-secondary {
-    @apply px-6 py-3 bg-gray-200 text-gray-800 rounded-lg font-semibold
-           hover:bg-gray-300 transition-colors duration-200
+    @apply px-6 py-4 bg-transparent border-2 border-muted-text text-dark-brown
+           rounded-xl font-medium
+           hover:bg-muted-text/10 transition-all duration-200
            active:scale-95 transform
-           min-h-[44px] min-w-[44px];
+           min-h-[48px];
   }
 
-  .emotion-card {
-    @apply flex flex-col items-center justify-center
-           p-6 rounded-2xl cursor-pointer
-           transition-all duration-200
-           hover:scale-105 active:scale-95
-           min-h-[80px] min-w-[80px];
+  body.dark .btn-secondary {
+    @apply border-muted-dark text-warm-white hover:bg-muted-dark/10;
   }
 
-  .card {
-    @apply bg-white rounded-2xl shadow-lg p-6;
+  /* Text input */
+  .input-text {
+    @apply w-full px-4 py-3 bg-transparent
+           border-b-2 border-muted-text/30
+           focus:border-ember focus:outline-none
+           transition-colors duration-200
+           text-lg;
   }
 
+  body.dark .input-text {
+    @apply border-muted-dark/30 focus:border-soft-ember;
+  }
+
+  /* Page container */
   .page-container {
-    @apply min-h-screen w-full flex flex-col items-center justify-center p-4;
+    @apply min-h-screen w-full flex flex-col items-center justify-center p-6;
   }
 
-  .breathing-circle {
-    @apply transition-all ease-in-out;
+  /* Modal overlay */
+  .modal-overlay {
+    @apply fixed inset-0 bg-dark-brown/50 backdrop-blur-sm
+           flex items-center justify-center p-4 z-50;
+  }
+
+  body.dark .modal-overlay {
+    @apply bg-charcoal/70;
+  }
+
+  /* Modal content */
+  .modal-content {
+    @apply bg-cream rounded-2xl p-8 max-w-md w-full shadow-2xl;
+  }
+
+  body.dark .modal-content {
+    @apply bg-charcoal border border-muted-dark/30;
+  }
+
+  /* Calendar day */
+  .calendar-day {
+    @apply w-12 h-12 flex items-center justify-center
+           rounded-lg cursor-pointer
+           transition-all duration-150
+           hover:bg-muted-text/10;
+  }
+
+  body.dark .calendar-day {
+    @apply hover:bg-muted-dark/10;
+  }
+
+  .calendar-day.today {
+    @apply ring-2 ring-ember;
+  }
+
+  body.dark .calendar-day.today {
+    @apply ring-soft-ember;
+  }
+
+  .calendar-day.has-entry {
+    @apply font-semibold;
+  }
+
+  /* Emotion button in radial picker */
+  .emotion-btn {
+    @apply flex flex-col items-center justify-center
+           p-3 rounded-full
+           transition-all duration-150
+           hover:scale-110 active:scale-95
+           cursor-pointer;
+  }
+
+  /* Top bar */
+  .top-bar {
+    @apply fixed top-0 left-0 right-0
+           flex items-center justify-between
+           px-6 py-4 z-40
+           transition-all duration-300;
+  }
+
+  .top-bar.hidden {
+    @apply opacity-0 pointer-events-none transform -translate-y-full;
+  }
+
+  .top-bar.visible {
+    @apply opacity-100 pointer-events-auto transform translate-y-0;
   }
 }
 
 @layer utilities {
-  .text-balance {
-    text-wrap: balance;
+  /* Text area auto-resize */
+  .textarea-autoresize {
+    resize: none;
+    overflow-y: hidden;
   }
 
-  .touch-manipulation {
-    touch-action: manipulation;
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Touch-friendly */
+  .touch-target {
+    @apply min-w-[44px] min-h-[44px];
+  }
+
+  /* Word count display */
+  .word-count {
+    @apply text-sm text-muted-text;
+  }
+
+  body.dark .word-count {
+    @apply text-muted-dark;
   }
 }
 
-/* Custom animations for breathing */
-@keyframes pulse-slow {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
+/* Burning animation effects */
+.burning-page {
+  position: relative;
+  will-change: transform, filter, opacity;
 }
 
-.animate-pulse-slow {
-  animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+.burning-page::before {
+  content: '';
+  position: absolute;
+  inset: -10px;
+  background: radial-gradient(circle,
+    rgba(225, 112, 85, 0.4) 0%,
+    rgba(225, 112, 85, 0.2) 40%,
+    transparent 70%
+  );
+  opacity: 0;
+  pointer-events: none;
+  animation: fire-glow 3.5s ease-out forwards;
 }
 
-/* Loading spinner */
-.spinner {
-  border: 3px solid rgba(78, 205, 196, 0.1);
-  border-top-color: #4ECDC4;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  animation: spin 1s linear infinite;
+body.dark .burning-page::before {
+  background: radial-gradient(circle,
+    rgba(255, 138, 101, 0.4) 0%,
+    rgba(255, 138, 101, 0.2) 40%,
+    transparent 70%
+  );
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+@keyframes fire-glow {
+  0% { opacity: 0; }
+  30% { opacity: 1; }
+  100% { opacity: 0; }
 }
 
 /* Fade transitions */
@@ -142,48 +236,60 @@
   transition: opacity 300ms ease-out;
 }
 
-/* Slide transitions */
-.slide-enter {
-  transform: translateY(100%);
-}
-
-.slide-enter-active {
-  transform: translateY(0);
-  transition: transform 300ms ease-out;
-}
-
-.slide-exit {
-  transform: translateY(0);
-}
-
-.slide-exit-active {
-  transform: translateY(100%);
-  transition: transform 300ms ease-in;
-}
-
-/* Slide up/down animations for update notifier */
+/* Slide up (for modals) */
 @keyframes slide-up {
   from {
     transform: translateY(100%);
+    opacity: 0;
   }
   to {
     transform: translateY(0);
+    opacity: 1;
   }
 }
 
 @keyframes slide-down {
   from {
     transform: translateY(0);
+    opacity: 1;
   }
   to {
     transform: translateY(100%);
+    opacity: 0;
   }
 }
 
 .animate-slide-up {
-  animation: slide-up 300ms ease-out forwards;
+  animation: slide-up 400ms ease-out forwards;
 }
 
 .animate-slide-down {
   animation: slide-down 300ms ease-in forwards;
+}
+
+/* Loading spinner */
+.spinner {
+  border: 3px solid rgba(225, 112, 85, 0.1);
+  border-top-color: #E17055;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+}
+
+body.dark .spinner {
+  border-color: rgba(255, 138, 101, 0.1);
+  border-top-color: #FF8A65;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Disable text selection during burning animation */
+.burning-page * {
+  user-select: none;
+  -webkit-user-select: none;
 }

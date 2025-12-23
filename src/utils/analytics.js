@@ -1,21 +1,26 @@
-export function calculateStreak(history) {
-  if (history.length === 0) return 0;
+import { getEffectiveDate, getDateString, parseDate } from './dateHelpers.js';
 
-  // Sort by date descending
-  const dates = [...new Set(
-    history.map(s => new Date(s.timestamp).toISOString().split('T')[0])
-  )].sort((a, b) => new Date(b) - new Date(a));
+/**
+ * Calculate current streak from entries
+ * @param {Array} entries - Array of { date, emotion }
+ * @returns {number}
+ */
+export function calculateStreak(entries) {
+  if (entries.length === 0) return 0;
+
+  // Get unique dates and sort descending
+  const dates = [...new Set(entries.map(e => e.date))].sort((a, b) => b.localeCompare(a));
 
   let streak = 0;
-  let currentDate = new Date().toISOString().split('T')[0];
+  let currentDate = getEffectiveDate(); // Start with today (accounting for 4am cutoff)
 
-  for (let i = 0; i < dates.length; i++) {
-    if (dates[i] === currentDate) {
+  for (const date of dates) {
+    if (date === currentDate) {
       streak++;
       // Move to previous day
-      const date = new Date(currentDate);
-      date.setDate(date.getDate() - 1);
-      currentDate = date.toISOString().split('T')[0];
+      const prevDate = parseDate(currentDate);
+      prevDate.setDate(prevDate.getDate() - 1);
+      currentDate = getDateString(prevDate);
     } else {
       break;
     }
@@ -24,19 +29,25 @@ export function calculateStreak(history) {
   return streak;
 }
 
-export function calculateLongestStreak(history) {
-  if (history.length === 0) return 0;
+/**
+ * Calculate longest streak from entries
+ * @param {Array} entries - Array of { date, emotion }
+ * @returns {number}
+ */
+export function calculateLongestStreak(entries) {
+  if (entries.length === 0) return 0;
 
-  const dates = [...new Set(
-    history.map(s => new Date(s.timestamp).toISOString().split('T')[0])
-  )].sort();
+  // Get unique dates and sort ascending
+  const dates = [...new Set(entries.map(e => e.date))].sort();
+
+  if (dates.length === 1) return 1;
 
   let longestStreak = 1;
   let currentStreak = 1;
 
   for (let i = 1; i < dates.length; i++) {
-    const prevDate = new Date(dates[i - 1]);
-    const currDate = new Date(dates[i]);
+    const prevDate = parseDate(dates[i - 1]);
+    const currDate = parseDate(dates[i]);
     const diffDays = Math.floor((currDate - prevDate) / (1000 * 60 * 60 * 24));
 
     if (diffDays === 1) {
@@ -50,92 +61,64 @@ export function calculateLongestStreak(history) {
   return longestStreak;
 }
 
-export function calculateAverageMoodImprovement(history) {
-  const completedSessions = history.filter(s => s.completed && s.moodAfter);
-
-  if (completedSessions.length === 0) return 0;
-
-  const totalImprovement = completedSessions.reduce(
-    (sum, s) => sum + (s.moodBefore.intensity - s.moodAfter.intensity),
-    0
-  );
-
-  return Math.round((totalImprovement / completedSessions.length) * 10) / 10;
+/**
+ * Get total number of entries
+ * @param {Array} entries
+ * @returns {number}
+ */
+export function getTotalEntries(entries) {
+  return entries.length;
 }
 
-export function getMostCommonEmotion(history) {
-  if (history.length === 0) return null;
+/**
+ * Get entries for current month
+ * @param {Array} entries
+ * @returns {number}
+ */
+export function getEntriesThisMonth(entries) {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1; // 1-12
+
+  return entries.filter(entry => {
+    const [year, month] = entry.date.split('-').map(Number);
+    return year === currentYear && month === currentMonth;
+  }).length;
+}
+
+/**
+ * Get most common emotion from entries
+ * @param {Array} entries
+ * @returns {string|null}
+ */
+export function getMostCommonEmotion(entries) {
+  if (entries.length === 0) return null;
 
   const emotionCounts = {};
-  history.forEach(session => {
-    const emotion = session.moodBefore.emotion;
-    emotionCounts[emotion] = (emotionCounts[emotion] || 0) + 1;
+  entries.forEach(entry => {
+    if (entry.emotion) {
+      emotionCounts[entry.emotion] = (emotionCounts[entry.emotion] || 0) + 1;
+    }
   });
+
+  if (Object.keys(emotionCounts).length === 0) return null;
 
   return Object.keys(emotionCounts).reduce((a, b) =>
     emotionCounts[a] > emotionCounts[b] ? a : b
   );
 }
 
-export function getMostEffectiveTechnique(history) {
-  const techniques = {};
-
-  history.forEach(session => {
-    if (!session.completed || !session.moodAfter) return;
-
-    const technique = session.breathingTechnique;
-    if (!techniques[technique]) {
-      techniques[technique] = {
-        count: 0,
-        totalImprovement: 0
-      };
-    }
-
-    techniques[technique].count++;
-    techniques[technique].totalImprovement +=
-      session.moodBefore.intensity - session.moodAfter.intensity;
-  });
-
-  let bestTechnique = null;
-  let bestAverage = -Infinity;
-
-  Object.keys(techniques).forEach(technique => {
-    const avg = techniques[technique].totalImprovement / techniques[technique].count;
-    if (avg > bestAverage) {
-      bestAverage = avg;
-      bestTechnique = technique;
-    }
-  });
-
-  return bestTechnique;
-}
-
-export function getSessionsByDateRange(history, startDate, endDate) {
-  return history.filter(session => {
-    const timestamp = new Date(session.timestamp);
-    return timestamp >= startDate && timestamp <= endDate;
-  });
-}
-
-export function getSessionsForMonth(history, year, month) {
-  const startDate = new Date(year, month, 1);
-  const endDate = new Date(year, month + 1, 0, 23, 59, 59);
-  return getSessionsByDateRange(history, startDate, endDate);
-}
-
-export function getStatsForPeriod(history, days = 7) {
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - days);
-
-  const recentSessions = history.filter(s =>
-    new Date(s.timestamp) >= cutoff
-  );
-
+/**
+ * Get stats for display
+ * @param {Array} entries
+ * @returns {Object}
+ */
+export function getStats(entries) {
   return {
-    totalSessions: recentSessions.length,
-    completedSessions: recentSessions.filter(s => s.completed).length,
-    avgImprovement: calculateAverageMoodImprovement(recentSessions),
-    mostCommonEmotion: getMostCommonEmotion(recentSessions),
-    mostEffectiveTechnique: getMostEffectiveTechnique(recentSessions)
+    currentStreak: calculateStreak(entries),
+    longestStreak: calculateLongestStreak(entries),
+    totalEntries: getTotalEntries(entries),
+    entriesThisMonth: getEntriesThisMonth(entries),
+    mostCommonEmotion: getMostCommonEmotion(entries)
   };
 }
